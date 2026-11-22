@@ -28,12 +28,11 @@
 | 运行库 | 微软 VC++ 2015-2022 x64（MongoDB 需要） |
 | 权限 | 普通用户即可，**不需要管理员** |
 
-## 三、每个组件从哪来（官方链接）
+## 三、每个组件从哪来
 
 | 组件 | 版本 | 体积 | 链接 |
 | --- | --- | --- | --- |
-| 游戏本体 | 4.0.0 国际版 | 56.16 GB | <https://autopatchhk.yuanshen.com/client_app/download/pc_zip/20230804185804_eTmE8EZjJZdAJapq/GenshinImpact_4.0.0.zip> |
-| 中文语音 | 4.0.0 | 10.45 GB | <https://autopatchhk.yuanshen.com/client_app/download/pc_zip/20230804185804_eTmE8EZjJZdAJapq/Audio_Chinese_4.0.0.zip> |
+| **游戏客户端 + 语音包** | 4.0.0 国际版 | 56.16 GB + 10.45 GB | **<https://github.com/JRSKelvin/GenshinRepository/blob/main/Version%204.0.0.md>** |
 | Java 17 | Temurin 17 (x64) | 182 MB | <https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse> |
 | MongoDB | 7.0.5 免安装 zip | 594 MB | <https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.5.zip> |
 | 服务端 | Grasscutter 1.7.4 | 98 MB | <https://github.com/Grasscutters/Grasscutter/releases/download/v1.7.4/grasscutter-1.7.4.jar> |
@@ -43,6 +42,13 @@
 | 图形化指令工具 | GcTools 1.13.0 | 13 MB | <https://github.com/jie65535/GrasscutterCommandGenerator/releases/download/v1.13.0/GcTools-v1.13.0.exe> |
 
 > 客户端两个 zip 内部**没有多余的一层目录**，解压出来直接就是 `GenshinImpact.exe` + `GenshinImpact_Data`；语音包内部路径是 `GenshinImpact_Data/StreamingAssets/AudioAssets/Chinese`，同样直接解压进 `游戏\` 就能对上。
+
+**客户端怎么从清单页下**（<https://github.com/JRSKelvin/GenshinRepository/blob/main/Version%204.0.0.md>）：进门只看 `Full Install Section` 那一段——
+
+- `Game Data 4.0.0` → 56.16 GB 客户端本体
+- `Audio CN 4.0.0` → 10.45 GB 中文语音（想要英/日/韩就把 EN / JP / KO 一起下）
+
+已经装着 3.7 / 3.8 客户端的，可以只下 `Pre-Install Section` 里的增量包（如 `Game Data from 3.8.0 to 4.0.0` + 同版本语音增量），省一半以上流量；但私服要求版本**正好 4.0.0**，打完增量**别再让客户端更新**。清单页里每条都是完整直链，浏览器 / IDM / 迅雷都能断点续传；`教程\组装.bat` 也会先读这张页面取链接，读不到才用仓库内置的兜底地址。
 
 **没有现成链接、只能自己打包的部分**（本仓库 Release 提供 `XH_YS_Kit.7z`，14MB）：
 
@@ -60,10 +66,10 @@
 1. 新建 `D:\XH_YS`，把 **`XH_YS_Kit.7z`** 解压进去，会得到 `配置\`、`脚本\`、`教程\`。
 2. 进 `教程`，双击 **`组装.bat`**。它会：
    - 检查缺什么：Java 17 / MongoDB / 服务端 jar / resources / opencommand 插件
-   - **缺哪个就从上面的官方链接下哪个**（curl 断点续传，断了重跑接着下）
+   - **缺哪个就从上面的链接下哪个**（curl 断点续传，断了重跑接着下）
    - 把下到的东西摆进 `配置\工具\jdk-17`、`配置\数据库\bin`、`配置\服务端\resources` 等固定位置
-   - 客户端没放齐时，直接把两条官方直链打出来给你
-3. 下客户端：`GenshinImpact_4.0.0.zip` 和 `Audio_Chinese_4.0.0.zip` 都解压到 `D:\XH_YS\游戏\`（提示合并就合并），确认 `游戏\GenshinImpact.exe` 存在。
+   - 客户端没放齐时，直接把「版本清单页」地址和页内直链打出来给你
+3. 下客户端：打开那张 **Version 4.0.0 清单页**，下 `Game Data 4.0.0` 和 `Audio CN 4.0.0`，两个 zip 都解压到 `D:\XH_YS\游戏\`（提示合并就合并），确认 `游戏\GenshinImpact.exe` 存在。
 4. 再双击 **`教程\一键部署.bat`**：装补丁、写启动器配置、试跑数据库、问你要不要直接开服。
 
 ### 路线 B：全手动
@@ -183,6 +189,7 @@ Release 里的 `XH_YS_Kit.7z` = `配置\工具` + `配置\服务端\config.json`
 
 ## 更新日志
 
+- **2026-11-22（四次更新）**：客户端下载入口换成 4.0.0 版本清单页（<https://github.com/JRSKelvin/GenshinRepository/blob/main/Version%204.0.0.md>），`组装.ps1` 会先读该页取直链、读不到才用内置兜底地址；README / 部署教程 / 打包说明同步
 - **2026-11-22（三次更新）**：改为「官方链接优先 + 小 Kit」模型——Release 只放 14MB 的 `XH_YS_Kit.7z`（脚本/配置/补丁/便携启动器），其余组件全部走官方链接，由 `组装.bat` 自动下载摆放
 - **2026-11-22（二次更新）**：去掉 70GB 整合包；客户端改用官方 CDN 直链；`run_mongo.cmd` 首次启动自动创建 `data` / `log`
 - **2026-11-22** 首次发布：一键部署脚本、部署教程、打包说明、目录规范

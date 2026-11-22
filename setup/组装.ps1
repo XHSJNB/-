@@ -1,5 +1,5 @@
-﻿# ============================================================
-#  组装.ps1  —— 按官方链接把缺的组件补齐，再交给「一键部署」
+# ============================================================
+#  组装.ps1  —— 按链接把缺的组件补齐，再交给「一键部署」
 #
 #  用法：双击 教程\组装.bat
 #        或在本目录执行：
@@ -8,7 +8,7 @@
 #  它只做三件事：
 #    1) 缺什么下什么（Java 17 / MongoDB / 服务端 jar / resources / 插件）
 #    2) 把下载的东西摆到 XH_YS 规定的目录里
-#    3) 客户端没放齐就提示你去下官方包，放齐了就直接进入部署
+#    3) 客户端没放齐就提示你去「版本清单页」下完整包，放齐了就直接进入部署
 #
 #  重复运行是安全的：已经齐了的组件会跳过。
 # ============================================================
@@ -26,7 +26,7 @@ $ToolDir = Join-Path $CfgDir '工具'
 $GameDir = Join-Path $Root  '游戏'
 $TmpDir  = Join-Path $env:TEMP ('xhys_asm_' + [Guid]::NewGuid().ToString('N').Substring(0,8))
 
-# ---------- 官方链接（要换版本改这里） ----------
+# ---------- 各组件的下载地址（要换版本改这里） ----------
 $UrlJava      = 'https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse'
 $UrlMongo     = 'https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.5.zip'
 $UrlJar       = 'https://github.com/Grasscutters/Grasscutter/releases/download/v1.7.4/grasscutter-1.7.4.jar'
@@ -34,6 +34,37 @@ $UrlResources = 'https://gitlab.com/api/v4/projects/35984297/repository/archive.
 $UrlPlugin    = 'https://github.com/jie65535/gc-opencommand-plugin/releases/download/v1.7.0/opencommand-1.7.0.jar'
 $UrlClient    = 'https://autopatchhk.yuanshen.com/client_app/download/pc_zip/20230804185804_eTmE8EZjJZdAJapq/GenshinImpact_4.0.0.zip'
 $UrlAudio     = 'https://autopatchhk.yuanshen.com/client_app/download/pc_zip/20230804185804_eTmE8EZjJZdAJapq/Audio_Chinese_4.0.0.zip'
+
+# ---------- 客户端下载入口：版本清单页 ----------
+# 客户端本体 / 语音包统一从这张清单页进（里面列了 4.0.0 全套完整包，还有 3.7→4.0、3.8→4.0 的增量包）
+$UrlVerPage   = 'https://github.com/JRSKelvin/GenshinRepository/blob/main/Version%204.0.0.md'
+$UrlVerRaw    = 'https://raw.githubusercontent.com/JRSKelvin/GenshinRepository/main/Version%204.0.0.md'
+
+# 先从清单页取实际直链；取不到就用上面的兜底地址，保证脚本永远能往下走
+# （清单页读不到网速/网络问题很常见，所以限时 12 秒，超时立刻用兜底，不卡住整套部署）
+function Resolve-PageLink($label, $fallback) {
+    try {
+        $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
+        $tmp  = Join-Path $env:TEMP ('verpage_' + [Guid]::NewGuid().ToString('N').Substring(0,8) + '.md')
+        if (Test-Path -LiteralPath $curl) {
+            & $curl -L --fail --max-time 12 -s -o $tmp $UrlVerRaw 2>$null
+            $okCurl = ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $tmp))
+            if ($okCurl) { $md = [IO.File]::ReadAllText($tmp) }
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+        }
+        if (-not $okCurl) {
+            $md = (Invoke-WebRequest -Uri $UrlVerRaw -UseBasicParsing -TimeoutSec 12).Content
+        }
+        foreach ($m in [regex]::Matches($md, '\[([^\]]+)\]\((https://[^)\s]+)\)')) {
+            if ($m.Groups[1].Value.Trim() -ieq $label) {
+                return @{ url = $m.Groups[2].Value; from = '版本清单页' }
+            }
+        }
+    } catch { }
+    return @{ url = $fallback; from = '内置地址' }
+}
+$ClientLink = Resolve-PageLink 'Game Data 4.0.0' $UrlClient
+$AudioLink  = Resolve-PageLink 'Audio CN 4.0.0'  $UrlAudio
 
 # ---------- 小工具 ----------
 function Say  ($m, $c = 'Cyan')   { Write-Host $m -ForegroundColor $c }
@@ -230,7 +261,7 @@ if ($plug) {
 }
 
 # ---------- 6/6 客户端 ----------
-Step '6/6' '游戏客户端（4.0.0 本体 + 中文语音，官方 CDN）'
+Step '6/6' '游戏客户端（4.0.0 本体 + 中文语音，走版本清单页）'
 $exe = Join-Path $GameDir 'GenshinImpact.exe'
 $audio = Join-Path $GameDir 'GenshinImpact_Data\StreamingAssets\AudioAssets\Chinese'
 if ((Test-Path -LiteralPath $exe) -and (Test-Path -LiteralPath $audio)) {
@@ -238,12 +269,14 @@ if ((Test-Path -LiteralPath $exe) -and (Test-Path -LiteralPath $audio)) {
 } else {
     if (-not (Test-Path -LiteralPath $exe)) {
         Say '  缺客户端本体（56.16GB）：' -c Yellow
-        Say ('  ' + $UrlClient)
+        Say ('  下载入口（清单页，选 Full Install Section 里的 Game Data 4.0.0）：' + $UrlVerPage)
+        Say ('  页内直链（' + $ClientLink.from + '）：' + $ClientLink.url)
         Say '  下完解压到 游戏\（zip 里没有多余一层目录，解压完应该直接看到 GenshinImpact.exe）'
     }
     if (-not (Test-Path -LiteralPath $audio)) {
         Say '  缺中文语音包（10.45GB）：' -c Yellow
-        Say ('  ' + $UrlAudio)
+        Say ('  同一个清单页，选 Audio CN 4.0.0：' + $UrlVerPage)
+        Say ('  页内直链（' + $AudioLink.from + '）：' + $AudioLink.url)
         Say '  同样解压到 游戏\，提示合并就合并（会落到 GenshinImpact_Data\StreamingAssets\AudioAssets\Chinese）'
     }
     Note '客户端体积太大，脚本不代下；用浏览器 / IDM / 迅雷都行，支持断点续传。放好后重跑本脚本即可。'
